@@ -1,0 +1,7 @@
+{
+  "name": "Gemini Live Dictate",
+  "description": "A real-time dictation application using Gemini 2.5 Flash Live API for low-latency speech-to-text, featuring text-to-speech playback and summarization.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
