@@ -4,15 +4,15 @@ import { generateSpeech, summarizeText } from '../services/geminiService';
 import { decodeAudioData } from '../utils/audioUtils';
 import Visualizer from './Visualizer';
 import TextArea from './TextArea';
-import { SavedTranscript } from '../types';
+import { SavedTranscript, LanguageMode } from '../types';
 import { 
     MicIcon, SquareIcon, CopyIcon, SparklesIcon, VolumeIcon, 
     LoaderIcon, MenuIcon, SaveIcon, TrashIcon, StarIcon, 
-    SearchIcon, PlusIcon, CloseIcon 
+    SearchIcon, PlusIcon, CloseIcon, GlobeIcon 
 } from './Icons';
 
 // Helper for tooltips (kept local)
-const ActionTooltip = ({ children, label }: { children: React.ReactNode, label: string }) => (
+const ActionTooltip = ({ children, label }: { children?: React.ReactNode, label: string }) => (
     <div className="group relative flex flex-col items-center">
         {children}
         <div className="absolute md:left-full md:top-1/2 md:-translate-y-1/2 md:ml-2 md:mt-0 top-full mt-2 hidden group-hover:block bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
@@ -46,6 +46,9 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
     }
   });
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Language State
+  const [language, setLanguage] = useState<LanguageMode>('auto');
 
   // Loading states for actions
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -87,6 +90,7 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
   const { isRecording, audioLevel, start, stop } = useLiveDictation({
     onTranscriptionUpdate: handleTranscriptionUpdate,
     onError: handleDictationError,
+    language: language,
   });
 
   const toggleRecording = () => {
@@ -262,7 +266,7 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
                   <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-md">
                     <MicIcon />
                   </div>
-                  <div>
+                  <div className="hidden sm:block">
                     <h1 className="text-xl font-bold text-slate-900 tracking-tight">Dictation</h1>
                     <p className="text-xs text-slate-500 font-medium">Real-time Transcription</p>
                   </div>
@@ -270,6 +274,29 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
             </div>
 
             <div className="flex items-center gap-3">
+                {/* Language Selector */}
+                <div className="relative group">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-700 transition-colors">
+                        <GlobeIcon />
+                        <span className="capitalize">{language}</span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-lg shadow-xl border border-slate-200 py-1 hidden group-hover:block z-50">
+                        {(['auto', 'english', 'arabic'] as LanguageMode[]).map((lang) => (
+                            <button 
+                                key={lang}
+                                onClick={() => !isRecording && setLanguage(lang)}
+                                disabled={isRecording}
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                                    language === lang ? 'text-indigo-600 font-medium' : 'text-slate-600'
+                                } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <span className="capitalize">{lang}</span>
+                                {language === lang && <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                  <button 
                     onClick={handleSaveToLibrary} 
                     disabled={!fullText.trim()}
@@ -287,7 +314,7 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
                  </button>
 
                 {/* Status Indicator */}
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
+                <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
                     isRecording 
                     ? 'bg-rose-50 text-rose-600 border-rose-100' 
                     : 'bg-slate-100 text-slate-500 border-slate-200'
@@ -316,7 +343,11 @@ const DictationInterface: React.FC<DictationInterfaceProps> = ({ isSidebarOpen, 
                      <TextArea 
                         value={fullText} 
                         onChange={handleTextChange} 
-                        placeholder="Tap the microphone to start dictating..."
+                        placeholder={
+                            isRecording 
+                            ? `Listening in ${language === 'auto' ? 'Auto-detect' : language} mode...`
+                            : "Tap the microphone to start dictating..."
+                        }
                     />
                      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 md:bottom-12 z-20">
                          <button

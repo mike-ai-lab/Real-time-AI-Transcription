@@ -5,6 +5,8 @@ export enum LoadingState {
   SPEAKING = 'SPEAKING',
 }
 
+export type LanguageMode = 'auto' | 'english' | 'arabic';
+
 export interface DictationState {
   transcript: string;
   isRecording: boolean;

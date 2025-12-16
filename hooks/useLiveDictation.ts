@@ -2,13 +2,15 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { ai } from '../services/geminiService';
 import { createPcmBlob } from '../utils/audioUtils';
 import { LiveServerMessage, Modality } from '@google/genai';
+import { LanguageMode } from '../types';
 
 interface UseLiveDictationProps {
   onTranscriptionUpdate: (text: string, isFinal: boolean) => void;
   onError: (error: string) => void;
+  language: LanguageMode;
 }
 
-export const useLiveDictation = ({ onTranscriptionUpdate, onError }: UseLiveDictationProps) => {
+export const useLiveDictation = ({ onTranscriptionUpdate, onError, language }: UseLiveDictationProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0); // For visualization
   
@@ -58,6 +60,20 @@ export const useLiveDictation = ({ onTranscriptionUpdate, onError }: UseLiveDict
         currentTranscriptionRef.current = '';
     }
   }, [onTranscriptionUpdate]);
+
+  const getSystemInstruction = (mode: LanguageMode) => {
+    const baseRule = "You are an expert transcriber. Your task is to transcribe speech to text accurately. Strict rules:\n1. Apply proper punctuation (periods, commas, question marks) and capitalization.\n2. Do NOT include filler words (um, uh, ah), stuttering, or tags like <noise>.\n3. Output clean, readable prose.";
+
+    switch (mode) {
+        case 'english':
+            return `${baseRule}\n4. CRITICAL: Your output MUST be in ENGLISH. If the speaker uses another language, translate it to English instantly and transcribe the translation.`;
+        case 'arabic':
+            return `${baseRule}\n4. CRITICAL: Your output MUST be in ARABIC (Modern Standard Arabic). If the speaker uses another language, translate it to Arabic instantly and transcribe the translation.`;
+        case 'auto':
+        default:
+            return `${baseRule}\n4. Detect the language automatically and transcribe in that language.`;
+    }
+  };
 
   const start = useCallback(async () => {
     try {
@@ -133,7 +149,7 @@ export const useLiveDictation = ({ onTranscriptionUpdate, onError }: UseLiveDict
         config: {
           responseModalities: [Modality.AUDIO], // Required by protocol even if we just want transcription mainly
           inputAudioTranscription: {}, // Enable Input Transcription!
-          systemInstruction: "You are an expert transcriber. Your task is to transcribe speech to text accurately. Strict rules:\n1. Apply proper punctuation (periods, commas, question marks) and capitalization.\n2. Do NOT include filler words (um, uh, ah), stuttering, or tags like <noise>.\n3. Output clean, readable prose.",
+          systemInstruction: getSystemInstruction(language),
         },
       });
 
@@ -142,7 +158,7 @@ export const useLiveDictation = ({ onTranscriptionUpdate, onError }: UseLiveDict
       onError(err.message || 'Failed to access microphone or connect to API.');
       stop();
     }
-  }, [onTranscriptionUpdate, onError, stop]);
+  }, [onTranscriptionUpdate, onError, stop, language]);
 
   return {
     isRecording,
